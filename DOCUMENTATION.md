@@ -67,7 +67,7 @@ Claude Code also operates **interactively** — a developer has to ask it to rev
 - **LLM output is non-deterministic** — generated tests need human review before merging
 - **Not a replacement for a real QA engineer** — it catches obvious gaps, not subtle logic errors
 - **RAM usage during run** — ~5GB while active (released immediately after)
-- **No historical memory** — each run is stateless, it doesn't learn from past reports
+- **Limited historical memory** — it only stores ignored recommendation entries, not long-term learning from past reports
 - **Prompt quality matters** — if your prompts are vague, output quality drops
 - **React Native focused** — works best for RN + Jest projects out of the box, needs adaptation for other stacks
 
@@ -80,3 +80,100 @@ Claude Code also operates **interactively** — a developer has to ask it to rev
 ### Bottom line
 
 > This agent is the right tool when you want **automated QA guardrails that are free, private, and always running** — without depending on a vendor, an internet connection, or a shared budget. It won't replace your QA team, but it will make sure no developer accidentally ships untested, risky code without at least being warned first.
+
+### 4. How it works (runtime flow)
+
+On each run, the agent executes a fixed pipeline:
+
+1. Ensures Ollama is installed/running, then selects an LLM strategy and confirms required models are available.
+2. Optionally rescans project conventions when `--scan-conventions` is passed.
+3. Detects changed files from git, filters by configured extensions/ignored paths, and loads file content + diffs.
+4. Runs LLM analysis to classify risk, impacted areas, regression risks, and test gaps.
+5. Converts analysis into actionable QA recommendations.
+6. Runs Jest using your configured command/args/rootDir.
+7. Writes a markdown report and prints a short console summary.
+8. Blocks commit only in the strict case: critical risk + failing tests.
+9. Unloads the quality model from RAM after the run when auto-stop is enabled.
+
+### 5. Configuration highlights
+
+The agent behavior is driven by `qa-agent.config.json`.
+
+- **Project scope**: `srcDir`, `testDir`, `fileExtensions`, `ignorePaths`
+- **LLM**: `llm.provider`, `llm.model`, `llm.fastModel`, `llm.strategy`
+- **Git diff mode**: `git.mode`, `git.compareBranch`
+- **Jest execution**: `jest.command`, `jest.args`, `jest.rootDir`, `jest.timeout`
+- **Ollama runtime**: `ollama.interactiveSetup`, `ollama.autoPullModel`, `ollama.autoStartServer`, `ollama.autoStopModel`, `ollama.keepAlive`, `ollama.numCtx`
+- **Reports**: `report.outputDir`
+
+### 6. LLM strategies
+
+The project supports three modes:
+
+- **quality**: uses `llm.model` for everything
+- **balanced**: uses `llm.fastModel` for analysis and `llm.model` for heavier steps
+- **fast**: uses `llm.fastModel` for everything
+
+If interactive setup is enabled, strategy is chosen via prompt at runtime. The selected strategy determines which models must exist locally and will be auto-pulled only when allowed by config.
+
+### 7. Git modes
+
+- **staged**: analyzes `git diff --cached` (best for pre-commit)
+- **unstaged**: analyzes `git diff HEAD` (all local modifications)
+- **branch**: compares current branch against `git.compareBranch` using `branch...HEAD`
+
+This lets the same agent work for local commits and branch-level validation in CI-like flows.
+
+### 8. Convention scanning and cache
+
+The agent learns project conventions by scanning folder structure + representative code samples, then asks the LLM to infer:
+
+- folder layout conventions
+- naming conventions
+- testing patterns
+- state/navigation/import style
+- TypeScript usage
+
+Results are cached in `.conventions-cache.json` for 7 days. Use `node index.js --scan-conventions` to force refresh.
+
+### 9. Memory behavior (ignored recommendations)
+
+Ignored items are persisted in `.qa-agent-memory.json` so repeated runs do not keep surfacing the same “new test needed” entries.
+
+- memory is loaded before filtering recommendations
+- newly ignored `missing-test` entries are saved after the run
+- reset behavior by removing `.qa-agent-memory.json`
+
+### 10. Commit policy
+
+The commit is blocked only when both are true:
+
+- analysis risk level is `critical`
+- Jest has one or more failing tests
+
+Everything else is reported as warnings/recommendations with a successful exit.
+
+### 11. Report contents
+
+Each run produces `qa-report-<timestamp>.md` under `report.outputDir` (default: `reports`).
+
+Reports include:
+
+- changed files
+- risk level and reasons
+- impacted areas
+- missing tests in existing suites
+- files that need brand new tests
+- regression risks
+- manual QA checklist
+- Jest pass/fail summary + failed test names
+- prioritized QA recommendations
+
+### 12. Operational notes and troubleshooting
+
+- **Ollama missing**: install from `https://ollama.com/download`
+- **Ollama not running**: enable auto-start or start `ollama serve` manually
+- **Model missing**: pull manually (`ollama pull <model>`) or allow auto-pull
+- **Slow runs**: use `balanced`/`fast`, reduce scope, or tune model/context settings
+- **Recommendations feel stale**: force convention rescan with `--scan-conventions`
+- **Need a clean recommendation state**: remove `.qa-agent-memory.json`
