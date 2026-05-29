@@ -79,6 +79,7 @@ async function getChangedFiles(config) {
       content,
       diff,
       relatedTest,
+      hasTest: relatedTest !== null,
       isTest: filePath.includes('.test.') || filePath.includes('.spec.')
     });
   }

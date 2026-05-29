@@ -26,6 +26,20 @@ async function buildReport({ changedFiles, analysis, generatedTests, testResults
   (analysis.impactedAreas || []).forEach((a) => lines.push(`- ${a}`));
   lines.push('');
   lines.push('## 🧪 Missing Tests');
+
+  if ((analysis.newTestsRecommended || []).length > 0) {
+  lines.push('## 🆕 New Tests Recommended');
+  lines.push('> These files have no test file at all and should get one:\n');
+  (analysis.newTestsRecommended || []).forEach((r) => {
+    const priorityEmoji = { high: '🔴', medium: '🟡', low: '🟢' }[r.priority] || '⚪';
+    lines.push(`### ${priorityEmoji} \`${r.file}\` [${r.priority}]`);
+    lines.push(`**Why:** ${r.reason}`);
+    lines.push('**Suggested test cases:**');
+    (r.suggestedTestCases || []).forEach((tc) => lines.push(`- [ ] ${tc}`));
+    lines.push('');
+  });
+}
+  
   (analysis.missingTests || []).forEach((m) => {
     lines.push(`### \`${m.file}\``);
     (m.testCases || []).forEach((tc) => lines.push(`- [ ] ${tc}`));
