@@ -5,6 +5,7 @@ generates Jest test skeletons, runs your test suite, and produces a markdown rep
 Uses Ollama + qwen2.5-coder:7b — fully local, no tokens, no cloud.
 
 ## Folder structure
+```
 qa-agent/
 ├── index.js
 ├── qa-agent.config.json
@@ -22,6 +23,7 @@ qa-agent/
 ├── reports/              ← generated at runtime
 └── .husky/
     └── pre-commit
+```
 
 ## Setup
 
@@ -56,3 +58,8 @@ From your project root:
 - Generated test skeletons → qa-agent/reports/generated-tests/
 
 ## Config options (ollama block)
+
+## Run
+```
+node index.js --mode=branch --compare=main
+```
