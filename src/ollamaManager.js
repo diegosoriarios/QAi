@@ -132,6 +132,46 @@ function openOllamaDownloadPage() {
   runCommand('xdg-open', [url]);
 }
 
+function getRequiredModelsForStrategy(config) {
+  const strategy = config.llm?.strategy || 'quality';
+  const qualityModel = config.llm?.model || 'qwen2.5-coder:7b';
+  const fastModel = config.llm?.fastModel || qualityModel;
+
+  if (strategy === 'fast') {
+    return [fastModel];
+  }
+
+  if (strategy === 'balanced') {
+    return [...new Set([fastModel, qualityModel])];
+  }
+
+  return [qualityModel];
+}
+
+async function ensureStrategyModelsReady(config) {
+  const interactive = config.ollama?.interactiveSetup !== false;
+  const autoPullModel = config.ollama?.autoPullModel !== false;
+  const requiredModels = getRequiredModelsForStrategy(config);
+
+  for (const modelName of requiredModels) {
+    if (hasModel(modelName)) {
+      continue;
+    }
+
+    console.log(`\n⚠️ Model not found locally: ${modelName}`);
+    if (!interactive || !autoPullModel) {
+      throw new Error(`Model ${modelName} is missing. Run: ollama pull ${modelName}`);
+    }
+
+    const shouldPull = await askYesNo(`Pull ${modelName} now?`);
+    if (!shouldPull) {
+      throw new Error(`Model ${modelName} is required. Run: ollama pull ${modelName}`);
+    }
+
+    await pullModel(modelName);
+  }
+}
+
 async function ensureOllamaReady(config) {
   const modelName = config.llm?.model || 'qwen2.5-coder:7b';
   const interactive = config.ollama?.interactiveSetup !== false;
@@ -175,4 +215,4 @@ async function ensureOllamaReady(config) {
   console.log(`\n✅ Ollama ready. Using model: ${modelName}`);
 }
 
-module.exports = { ensureOllamaReady, stopModel, selectLLMStrategy };
+module.exports = { ensureOllamaReady, stopModel, selectLLMStrategy, ensureStrategyModelsReady };
