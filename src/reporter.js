@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-async function buildReport({ changedFiles, analysis, generatedTests, testResults, config }) {
+async function buildReport({ changedFiles, analysis, qaRecommendations, testResults, config }) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const outputDir = config.report?.outputDir || 'reports';
   const reportDir = path.join(__dirname, '..', outputDir);
@@ -64,17 +64,21 @@ async function buildReport({ changedFiles, analysis, generatedTests, testResults
     testResults.failedTests.forEach((t) => lines.push(`- ❌ ${t}`));
   }
   lines.push('');
-  if (generatedTests.length > 0) {
-    lines.push('## 🤖 Generated Test Files');
-    generatedTests.forEach((g) => {
-      lines.push(`### \`${g.sourceFile}\``);
-      lines.push(`**Saved to:** \`${g.testFile}\``);
-      lines.push('**Test cases covered:**');
-      g.testCases.forEach((tc) => lines.push(`- ${tc}`));
+  lines.push('## 📌 QA Recommendations');
+  if ((qaRecommendations || []).length === 0) {
+    lines.push('- No additional QA recommendations.');
+    lines.push('');
+  } else {
+    (qaRecommendations || []).forEach((r) => {
+      const priorityEmoji = { high: '🔴', medium: '🟡', low: '🟢' }[r.priority] || '🟡';
+      lines.push(`### ${priorityEmoji} \`${r.file}\``);
+      lines.push(`**Type:** ${r.type}`);
+      lines.push(`**Why:** ${r.why}`);
+      lines.push('**What should change:**');
+      lines.push('- Add or improve tests based on the suggested test cases below.');
+      lines.push('**What tests should exist:**');
+      (r.suggestedTestCases || []).forEach((tc) => lines.push(`- [ ] ${tc}`));
       lines.push('');
-      lines.push('```typescript');
-      lines.push(g.code);
-      lines.push('```');
     });
   }
 
@@ -86,7 +90,7 @@ async function buildReport({ changedFiles, analysis, generatedTests, testResults
     `Risk: ${riskEmoji[analysis.riskLevel]} ${(analysis.riskLevel || 'unknown').toUpperCase()}`,
     `Tests: ✅ ${testResults.passed} passed | ❌ ${testResults.failed} failed`,
     `Missing test cases: ${(analysis.missingTests || []).reduce((acc, m) => acc + m.testCases.length, 0)}`,
-    `Generated test files: ${generatedTests.length}`,
+    `QA recommendations: ${(qaRecommendations || []).length}`,
   ].join('\n');
 
   return { summary, path: reportPath, content: reportContent };

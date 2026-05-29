@@ -1,7 +1,26 @@
 const http = require('http');
 
-async function callLLM(systemPrompt, userPrompt, config) {
+function resolveModel(config, type) {
+  const strategy = config.llm?.strategy || 'quality';
   const model = config.llm?.model || 'qwen2.5-coder:7b';
+  const fastModel = config.llm?.fastModel || model;
+
+  if (strategy === 'fast') {
+    return fastModel;
+  }
+
+  if (strategy === 'balanced') {
+    if (type === 'analysis') {
+      return fastModel;
+    }
+    return model;
+  }
+
+  return model;
+}
+
+async function callLLM(systemPrompt, userPrompt, config, type) {
+  const model = resolveModel(config, type);
 
   const body = JSON.stringify({
     model,
@@ -49,4 +68,4 @@ async function callLLM(systemPrompt, userPrompt, config) {
   });
 }
 
-module.exports = { callLLM };
+module.exports = { callLLM, resolveModel };

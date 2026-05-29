@@ -23,3 +23,6 @@ Thumbs.db
 
 # Scanned conventions cache
 .conventions-cache.json
+
+# QA agent memory
+.qa-agent-memory.json

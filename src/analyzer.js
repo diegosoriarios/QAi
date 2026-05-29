@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { callLLM } = require('./llm');
+const { isIgnored } = require('./memory');
 
 async function analyzeChanges(changedFiles, config) {
   const promptTemplate = fs.readFileSync(path.join(__dirname, '../prompts/analyze.txt'), 'utf8');
@@ -50,17 +51,24 @@ Rules:
 - Prioritize by complexity and risk: high = core logic/services, medium = components, low = utils/constants
 `;
 
-  const raw = await callLLM(promptTemplate, userPrompt, config);
+  const raw = await callLLM(promptTemplate, userPrompt, config, 'analysis');
 
   try {
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    return JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    parsed.newTestsRecommended = (parsed.newTestsRecommended || []).filter(
+      (entry) => !isIgnored(entry.file, 'missing-test')
+    );
+
+    return parsed;
   } catch {
     return {
       riskLevel: 'unknown',
       impactedAreas: [],
       riskReasons: ['Failed to parse LLM analysis'],
       missingTests: [],
+      newTestsRecommended: [],
       manualQAChecklist: [],
       regressionRisks: []
     };

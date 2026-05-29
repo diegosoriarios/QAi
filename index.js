@@ -7,6 +7,7 @@ const { scanConventions } = require('./src/conventionScanner')
 const { runTests } = require('./src/testRunner');
 const { buildReport } = require('./src/reporter');
 const { ensureOllamaReady, stopModel } = require('./src/ollamaManager');
+const { loadMemory, saveMemory, isIgnored } = require('./src/memory');
 const config = require('./qa-agent.config.json');
 
 async function run() {
@@ -35,8 +36,8 @@ async function run() {
     console.log('\n🔍 Analyzing changes...');
     analysis = await analyzeChanges(changedFiles, config);
 
-    console.log('\n🧪 Generating test suggestions...');
-    const generatedTests = await generateTests(changedFiles, analysis, config);
+    console.log('\n🧪 Building QA recommendations...');
+    const qaRecommendations = await generateTests(changedFiles, analysis, config);
 
     console.log('\n▶️ Running Jest tests...');
     testResults = await runTests(config);
@@ -45,7 +46,7 @@ async function run() {
     const report = await buildReport({
       changedFiles,
       analysis,
-      generatedTests,
+      qaRecommendations,
       testResults,
       config
     });
@@ -60,6 +61,14 @@ async function run() {
       process.exitCode = 1;
       return;
     }
+
+    const memory = loadMemory();
+    for (const recommendation of qaRecommendations) {
+      if (recommendation.type !== 'new-test-needed') continue;
+      if (isIgnored(recommendation.file, 'missing-test')) continue;
+      memory.ignored.push({ file: recommendation.file, reason: 'missing-test' });
+    }
+    saveMemory(memory);
 
     process.exitCode = 0;
   } catch (err) {
