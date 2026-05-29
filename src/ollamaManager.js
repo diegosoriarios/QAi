@@ -2,6 +2,19 @@ const { spawn, spawnSync } = require('child_process');
 const http = require('http');
 const readline = require('readline');
 
+function askQuestion(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
 function askYesNo(question) {
   return new Promise((resolve) => {
     const rl = readline.createInterface({
@@ -13,6 +26,34 @@ function askYesNo(question) {
       resolve(answer.trim().toLowerCase() === 'y');
     });
   });
+}
+
+async function selectLLMStrategy(config) {
+  const interactive = config.ollama?.interactiveSetup !== false;
+  const qualityModel = config.llm?.model || 'qwen2.5-coder:7b';
+  const fastModel = config.llm?.fastModel || qualityModel;
+  const current = config.llm?.strategy || 'quality';
+
+  if (!interactive) {
+    config.llm = { ...(config.llm || {}), strategy: current };
+    return current;
+  }
+
+  console.log('\n🧠 Choose LLM strategy:');
+  console.log(`   1) quality (${qualityModel})`);
+  console.log(`   2) balanced (analysis: ${fastModel}, others: ${qualityModel})`);
+  console.log(`   3) fast (${fastModel})`);
+
+  const answer = (await askQuestion(`Select strategy [1/2/3 or quality/balanced/fast] (default: ${current}): `)).toLowerCase();
+
+  let selected = current;
+  if (answer === '1' || answer === 'quality') selected = 'quality';
+  if (answer === '2' || answer === 'balanced') selected = 'balanced';
+  if (answer === '3' || answer === 'fast') selected = 'fast';
+
+  config.llm = { ...(config.llm || {}), strategy: selected };
+  console.log(`✅ Strategy selected: ${selected}`);
+  return selected;
 }
 
 function sleep(ms) {
@@ -134,4 +175,4 @@ async function ensureOllamaReady(config) {
   console.log(`\n✅ Ollama ready. Using model: ${modelName}`);
 }
 
-module.exports = { ensureOllamaReady, stopModel };
+module.exports = { ensureOllamaReady, stopModel, selectLLMStrategy };

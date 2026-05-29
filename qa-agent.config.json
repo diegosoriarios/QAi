@@ -8,7 +8,7 @@
     "provider": "ollama",
     "model": "qwen2.5-coder:7b",
     "fastModel": "qwen2.5-coder:1.5b",
-    "strategy": "balanced"
+    "strategy": "quality"
   },
   "git": {
     "mode": "branch",

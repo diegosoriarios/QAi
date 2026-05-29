@@ -6,7 +6,7 @@ const { generateTests } = require('./src/testGenerator');
 const { scanConventions } = require('./src/conventionScanner')
 const { runTests } = require('./src/testRunner');
 const { buildReport } = require('./src/reporter');
-const { ensureOllamaReady, stopModel } = require('./src/ollamaManager');
+const { ensureOllamaReady, stopModel, selectLLMStrategy } = require('./src/ollamaManager');
 const { loadMemory, saveMemory, isIgnored } = require('./src/memory');
 const config = require('./qa-agent.config.json');
 
@@ -17,6 +17,7 @@ async function run() {
   try {
     if (config.llm?.provider === 'ollama') {
       await ensureOllamaReady(config);
+      await selectLLMStrategy(config);
       const forceRescan = process.argv.includes('--scan-conventions')
       const conventions = await scanConventions(config, forceRescan)
       config.conventions = conventions;
