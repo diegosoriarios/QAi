@@ -1,0 +1,16 @@
+{
+  "projectName": "MyAutoApp",
+  "srcDir": "../src",
+  "testDir": "../__tests__",
+  "fileExtensions": [".js", ".ts", ".jsx", ".tsx"],
+  "ignorePaths": ["node_modules", "android", "ios", ".git", "dist"],
+  "llm": {
+    "provider": "ollama",
+    "model": "qwen2.5-coder:7b"
+  },
+  "jest": {
+    "command": "npx jest",
+    "args": ["--passWithNoTests"],
+    "rootDir": ".."
+  }
+}

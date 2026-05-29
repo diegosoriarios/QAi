@@ -1,0 +1,13 @@
+{
+  "name": "qa-agent",
+  "version": "1.0.0",
+  "description": "Local QA Agent for React Native - runs before commit using Ollama + qwen2.5-coder",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "qa": "node index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

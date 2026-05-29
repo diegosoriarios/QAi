@@ -1,0 +1,5 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "Running QA Agent before commit..."
+cd qa-agent && node index.js
